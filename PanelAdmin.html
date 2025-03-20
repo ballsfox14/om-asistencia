@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panel de Administración</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <style>
+    body {
+      padding: 20px;
+      background-color: #f8f9fa;
+    }
+
+    .container {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+
+    table {
+      font-size: 0.9rem;
+    }
+
+    /* Unificar ancho/estilo para .swal2-input y .swal2-select dentro del contenedor SweetAlert2 */
+    .swal2-popup .swal2-input,
+    .swal2-popup .swal2-select {
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
+      display: block;
+      width: 100% !important;
+      margin: 0.625em auto;
+      padding: 0.75em 0.75em;
+      font-size: 1em;
+      line-height: 1.3;
+      box-sizing: border-box;
+      border: 1px solid #d9d9d9;
+      border-radius: 0.25em;
+      background-color: #fff;
+      height: auto;
+      /* Ajusta si quieres un alto fijo (por ej. 2.2em) */
+    }
+  </style>
+
+</head>
+
+<body>
+  <div class="container">
+    <h3 class="text-center mb-4">Panel de Administración</h3>
+    <!-- Nav Tabs -->
+    <ul class="nav nav-tabs" id="adminTab" role="tablist">
+      <!-- Empleados -->
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="ver-empleados-tab" data-bs-toggle="tab" data-bs-target="#ver-empleados" type="button" role="tab" aria-controls="ver-empleados" aria-selected="true">
+        Empleados
+      </button>
+      </li>
+      <!-- Registrar Empleado -->
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="registrar-empleado-tab" data-bs-toggle="tab" data-bs-target="#registrar-empleado" type="button" role="tab" aria-controls="registrar-empleado" aria-selected="false">
+        Registrar Empleado
+      </button>
+      </li>
+      <!-- Solicitudes de Descanso -->
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="solicitudes-descanso-tab" data-bs-toggle="tab" data-bs-target="#solicitudes-descanso" type="button" role="tab" aria-controls="solicitudes-descanso" aria-selected="false">
+        Solicitudes de Descanso
+      </button>
+      </li>
+      <!-- Reporte Detallado -->
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="reporte-detallado-tab" data-bs-toggle="tab" data-bs-target="#reporte-detallado" type="button" role="tab" aria-controls="reporte-detallado" aria-selected="false">
+        Reporte Detallado
+      </button>
+      </li>
+      <!-- Resumen Semanal -->
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="resumen-semanal-tab" data-bs-toggle="tab" data-bs-target="#resumen-semanal" type="button" role="tab" aria-controls="resumen-semanal" aria-selected="false">
+        Resumen Semanal
+      </button>
+      </li>
+    </ul>
+
+    <!-- Tab Content -->
+    <div class="tab-content" id="adminTabContent">
+      <!-- Empleados -->
+      <div class="tab-pane fade show active" id="ver-empleados" role="tabpanel" aria-labelledby="ver-empleados-tab">
+        <div class="mt-3">
+          <div id="empleadosLista"></div>
+        </div>
+      </div>
+
+      <!-- Registrar Empleado -->
+      <div class="tab-pane fade" id="registrar-empleado" role="tabpanel" aria-labelledby="registrar-empleado-tab">
+        <div class="mt-3">
+          <!-- Botón para abrir el modal de registro -->
+          <button class="btn btn-primary w-100" onclick="registrarEmpleadoPrompt()">Registrar Nuevo Empleado</button>
+        </div>
+      </div>
+
+      <!-- Solicitudes de Descanso -->
+      <div class="tab-pane fade" id="solicitudes-descanso" role="tabpanel" aria-labelledby="solicitudes-descanso-tab">
+        <div class="mt-3">
+          <h4>Solicitudes de Descanso</h4>
+          <div id="listaSolicitudes"></div>
+        </div>
+      </div>
+
+      <!-- Reporte Detallado -->
+      <div class="tab-pane fade" id="reporte-detallado" role="tabpanel" aria-labelledby="reporte-detallado-tab">
+        <div class="mt-3">
+          <h4>Reporte Detallado de Asistencia</h4>
+          <p>La lista de empleados se carga automáticamente.</p>
+          <div id="listaEmpleadosReporte"></div>
+        </div>
+      </div>
+
+      <!-- Resumen Semanal -->
+      <div class="tab-pane fade" id="resumen-semanal" role="tabpanel" aria-labelledby="resumen-semanal-tab">
+        <div class="mt-3">
+          <h4>Resumen Semanal</h4>
+          <button class="btn btn-secondary w-100" onclick="cargarResumenSemanal()">Cargar Resumen Semanal</button>
+          <div id="reporteResumen" class="mt-3"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Bootstrap Bundle con Popper -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    // Función para convertir horas decimales a "Xh Ym"
+    function convertirDecimalAHorasMinutos(decimalHoras) {
+      var horas = Math.floor(decimalHoras);
+      var minutos = Math.round((decimalHoras - horas) * 60);
+      return horas + "h " + minutos + "m";
+    }
+  
+    // Al cargar la página, se cargan automáticamente la lista de empleados en las pestañas "Empleados", "Reporte Detallado" y las solicitudes
+    window.addEventListener('load', function() {
+      cargarEmpleados();
+      cargarListaEmpleadosReporte();
+      cargarSolicitudesDescanso();
+    });
+  
+    // Función para cargar y mostrar la lista de empleados en la pestaña "Empleados"
+    function cargarEmpleados() {
+      google.script.run.withSuccessHandler(function(datos) {
+        console.log("Empleados recibidos:", datos);
+        let html = '';
+        if (datos && datos.length > 0) {
+          html += '<ul class="list-group">';
+          datos.forEach(emp => {
+            html += `<li class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-center">
+                          <div>
+                            <strong>${emp.nombre}</strong> (${emp.rol})<br>
+                            <small>Usuario: ${emp.usuario}</small>
+                          </div>
+                          <div>
+                            <button class="btn btn-sm btn-warning me-1" onclick="editarEmpleadoPrompt('${emp.id}', '${emp.nombre}', '${emp.usuario}', '${emp.correo}')">Editar</button>
+                            <button class="btn btn-sm btn-danger" onclick="eliminarEmpleadoPrompt('${emp.id}', '${emp.nombre}')">Eliminar</button>
+                          </div>
+                        </div>
+                      </li>`;
+          });
+          html += '</ul>';
+        } else {
+          html = '<p class="text-center text-muted">No se encontraron empleados.</p>';
+        }
+        document.getElementById("empleadosLista").innerHTML = html;
+      }).obtenerEmpleados();
+    }
+  
+    // Función para cargar y mostrar la lista de empleados en la pestaña "Reporte Detallado"
+    function cargarListaEmpleadosReporte() {
+      google.script.run.withSuccessHandler(function(empleados) {
+        console.log("Empleados para reporte:", empleados);
+        let html = '';
+        if (empleados && empleados.length > 0) {
+          html += '<ul class="list-group">';
+          empleados.forEach(emp => {
+            html += `<li class="list-group-item d-flex justify-content-between align-items-center">
+                       <span>${emp.nombre}</span>
+                       <button class="btn btn-sm btn-primary" onclick="verDetallesEmpleado('${emp.id}', '${emp.nombre}')">Ver</button>
+                     </li>`;
+          });
+          html += '</ul>';
+        } else {
+          html = '<p class="text-center text-muted">No se encontraron empleados.</p>';
+        }
+        document.getElementById("listaEmpleadosReporte").innerHTML = html;
+      }).obtenerEmpleados();
+    }
+  
+    // Función para abrir un modal con los detalles de asistencia del empleado, agrupados por semanas laborales
+    function verDetallesEmpleado(id, nombre) {
+      google.script.run.withSuccessHandler(function(datos) {
+        console.log("Reporte para empleado " + nombre + ":", datos);
+        if (!datos || datos.length === 0) {
+          Swal.fire("No se encontraron registros", "El empleado " + nombre + " no tiene registros de asistencia.", "info");
+          return;
+        }
+        
+        let htmlModal = "<div class='accordion' id='accordionSemanas'>";
+        datos.forEach((semana, index) => {
+          htmlModal += `<div class="accordion-item">
+                            <h2 class="accordion-header" id="heading${index}">
+                              <button class="accordion-button ${index === 0 ? '' : 'collapsed'}" type="button" data-bs-toggle="collapse" data-bs-target="#collapse${index}" aria-expanded="${index === 0 ? 'true' : 'false'}" aria-controls="collapse${index}">
+                                Semana: ${semana.fechaInicio} - ${semana.fechaFin}
+                              </button>
+                            </h2>
+                            <div id="collapse${index}" class="accordion-collapse collapse ${index === 0 ? 'show' : ''}" aria-labelledby="heading${index}" data-bs-parent="#accordionSemanas">
+                              <div class="accordion-body">
+                                <table class="table table-bordered">
+                                  <thead>
+                                    <tr><th>Fecha</th><th>Entrada</th><th>Salida</th><th>Total Horas</th></tr>
+                                  </thead>
+                                  <tbody>`;
+          semana.registros.forEach(reg => {
+            htmlModal += `<tr>
+                            <td>${reg.fecha}</td>
+                            <td>${reg.horaEntrada}</td>
+                            <td>${reg.horaSalida}</td>
+                            <td>${convertirDecimalAHorasMinutos(reg.totalHoras)}</td>
+                          </tr>`;
+          });
+          htmlModal += `</tbody></table>
+                              </div>
+                            </div>
+                          </div>`;
+        });
+        htmlModal += "</div>";
+        
+        Swal.fire({
+          title: "Asistencia de " + nombre,
+          html: htmlModal,
+          width: "80%",
+          showCloseButton: true,
+          showConfirmButton: false
+        });
+      }).obtenerReporteEmpleado(id);
+    }
+  
+    // Función para abrir un modal para registrar un nuevo empleado (con selección de Rol)
+    function registrarEmpleadoPrompt() {
+      Swal.fire({
+        title: 'Registrar Nuevo Empleado',
+        html:
+          `<input id="swal-nombre" class="swal2-input" placeholder="Nombre">` +
+          `<input id="swal-usuario" class="swal2-input" placeholder="Usuario">` +
+          `<input id="swal-contrasena" type="password" class="swal2-input" placeholder="Contraseña">` +
+          `<input id="swal-correo" class="swal2-input" placeholder="Correo">` +
+          `<select id="swal-rol" class="swal2-input swal2-select">
+             <option value="">Seleccione Rol</option>
+             <option value="Empleado">Empleado</option>
+             <option value="Administrador">Administrador</option>
+           </select>`,
+        focusConfirm: false,
+        showCancelButton: true,
+        confirmButtonText: 'Guardar',
+        cancelButtonText: 'Cancelar',
+        preConfirm: () => {
+          return {
+            nombre: document.getElementById('swal-nombre').value,
+            usuario: document.getElementById('swal-usuario').value,
+            contrasena: document.getElementById('swal-contrasena').value,
+            correo: document.getElementById('swal-correo').value,
+            rol: document.getElementById('swal-rol').value
+          };
+        }
+      }).then((result) => {
+        if (result.isConfirmed) {
+          let { nombre, usuario, contrasena, correo, rol } = result.value;
+          // Validar campos obligatorios
+          if (!nombre.trim() || !usuario.trim() || !contrasena.trim() || !rol) {
+            Swal.fire("Error", "Los campos de Nombre, Usuario, Contraseña y Rol son obligatorios", "error");
+            return;
+          }
+          google.script.run.withSuccessHandler(function(response) {
+            if (response.success) {
+              Swal.fire("Éxito", response.message, "success");
+              cargarEmpleados();
+              cargarListaEmpleadosReporte();
+            } else {
+              Swal.fire("Error", response.message, "error");
+            }
+          }).registrarEmpleado(nombre, usuario, contrasena, correo, rol);
+        }
+      });
+    }
+  
+    // Función para mostrar el modal de edición utilizando SweetAlert2
+    function editarEmpleadoPrompt(id, nombre, usuario, correo) {
+      Swal.fire({
+        title: 'Editar Empleado',
+        html:
+          `<input id="swal-input1" class="swal2-input" placeholder="Nombre" value="${nombre}">` +
+          `<input id="swal-input2" class="swal2-input" placeholder="Usuario" value="${usuario}">` +
+          `<input id="swal-input3" type="password" class="swal2-input" placeholder="Contraseña (nueva si deseas cambiar)">` +
+          `<input id="swal-input4" class="swal2-input" placeholder="Correo" value="${correo}">`,
+        focusConfirm: false,
+        showCancelButton: true,
+        confirmButtonText: 'Actualizar',
+        cancelButtonText: 'Cancelar',
+        preConfirm: () => {
+          return [
+            document.getElementById('swal-input1').value,
+            document.getElementById('swal-input2').value,
+            document.getElementById('swal-input3').value,
+            document.getElementById('swal-input4').value
+          ];
+        }
+      }).then((result) => {
+        if (result.isConfirmed) {
+          var values = result.value;
+          // Comprobar si se han realizado cambios (la contraseña se ignora si está vacía)
+          if (values[0] === nombre && values[1] === usuario && values[3] === correo && (!values[2] || values[2].trim() === "")) {
+            Swal.fire("Información", "No se han realizado cambios", "info");
+            return;
+          }
+          google.script.run.withSuccessHandler(function(response) {
+            if (response.success) {
+              Swal.fire("Éxito", response.message, "success");
+              cargarEmpleados();
+              cargarListaEmpleadosReporte();
+            } else {
+              Swal.fire("Error", response.message, "error");
+            }
+          }).editarEmpleado(id, values[0], values[1], values[2], values[3]);
+        }
+      });
+    }
+  
+    // Función para confirmar y eliminar un empleado
+    function eliminarEmpleadoPrompt(id, nombre) {
+      Swal.fire({
+        title: '¿Estás seguro?',
+        text: "Eliminarás a " + nombre,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          google.script.run.withSuccessHandler(function(response) {
+            if (response.success) {
+              Swal.fire("Eliminado", response.message, "success");
+              cargarEmpleados();
+              cargarListaEmpleadosReporte();
+            } else {
+              Swal.fire("Error", response.message, "error");
+            }
+          }).eliminarEmpleado(id);
+        }
+      });
+    }
+  
+    // Función para cargar y mostrar el Resumen Semanal
+    function cargarResumenSemanal() {
+      google.script.run.withSuccessHandler(function(datos) {
+        let html = "<table class='table table-bordered'><thead><tr>" +
+                   "<th>Empleado</th><th>Semana (Inicio)</th><th>Total Horas</th><th>Horas Normales</th><th>Horas Extra</th>" +
+                   "</tr></thead><tbody>";
+        datos.forEach(function(row) {
+          html += `<tr>
+                     <td>${row.usuario}</td>
+                     <td>${row.semana}</td>
+                     <td>${convertirDecimalAHorasMinutos(row.totalHoras)}</td>
+                     <td>${convertirDecimalAHorasMinutos(row.horasNormales)}</td>
+                     <td>${convertirDecimalAHorasMinutos(row.horasExtra)}</td>
+                   </tr>`;
+        });
+        html += "</tbody></table>";
+        document.getElementById("reporteResumen").innerHTML = html;
+      }).obtenerResumenSemanalAdmin();
+    }
+  
+    // Funciones para gestionar Solicitudes de Descanso
+  
+    // Función para cargar y mostrar las solicitudes de descanso
+    function cargarSolicitudesDescanso() {
+      google.script.run.withSuccessHandler(function(solicitudes) {
+        console.log("Solicitudes recibidas:", solicitudes);
+        let html = '';
+        if (solicitudes && solicitudes.length > 0) {
+          html += '<ul class="list-group">';
+          solicitudes.forEach(solicitud => {
+            html += `<li class="list-group-item d-flex justify-content-between align-items-center">
+                       <div>
+                         <strong>${solicitud.empleado}</strong><br>
+                         <small>Horas Solicitadas: ${convertirDecimalAHorasMinutos(solicitud.horas)}</small>
+                       </div>
+                       <div>
+                         <button class="btn btn-sm btn-success me-1" onclick="aprobarSolicitud('${solicitud.id}', ${solicitud.horas}, '${solicitud.empleado}')">Aprobar</button>
+                         <button class="btn btn-sm btn-danger" onclick="rechazarSolicitud('${solicitud.id}', '${solicitud.empleado}')">Rechazar</button>
+                       </div>
+                     </li>`;
+          });
+          html += '</ul>';
+        } else {
+          html = '<p class="text-center text-muted">No hay solicitudes pendientes.</p>';
+        }
+        document.getElementById("listaSolicitudes").innerHTML = html;
+      }).obtenerSolicitudesDescanso();
+    }
+  
+    // Función para aprobar una solicitud de descanso
+    function aprobarSolicitud(id, horasSolicitadas, empleado) {
+      Swal.fire({
+        title: 'Aprobar Solicitud',
+        text: `¿Aprobar la solicitud de ${convertirDecimalAHorasMinutos(horasSolicitadas)} para ${empleado}?`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Aprobar',
+        cancelButtonText: 'Cancelar'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          google.script.run.withSuccessHandler(function(response) {
+            if (response.success) {
+              Swal.fire("Aprobado", response.message, "success");
+              cargarSolicitudesDescanso();
+            } else {
+              Swal.fire("Error", response.message, "error");
+            }
+          }).aprobarSolicitud(id, horasSolicitadas, empleado);
+        }
+      });
+    }
+  
+    // Función para rechazar una solicitud de descanso
+function rechazarSolicitud(id, empleado) {
+  Swal.fire({
+    title: 'Rechazar Solicitud',
+    html:
+      `<textarea id="swal-nota" class="swal2-textarea" placeholder="Ingrese el motivo del rechazo"></textarea>`,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Rechazar',
+    cancelButtonText: 'Cancelar',
+    preConfirm: () => {
+      return document.getElementById('swal-nota').value;
+    }
+  }).then((result) => {
+    if(result.isConfirmed) {
+      var nota = result.value;
+      google.script.run.withSuccessHandler(function(response) {
+        if(response.success) {
+          Swal.fire("Rechazado", response.message, "success");
+          cargarSolicitudesDescanso();
+        } else {
+          Swal.fire("Error", response.message, "error");
+        }
+      }).rechazarSolicitud(id, empleado, nota);
+    }
+  });
+}
+
+  </script>
+
+</body>
+
+</html>
+</body>
+
+</html>
