@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panel de Empleado</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <style>
+    body {
+      background-color: #f8f9fa;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h3 class="text-center">Panel de Empleado</h3>
+    <p class="text-center" id="bienvenida">Bienvenido, <strong id="nombreUsuario"></strong></p>
+
+    <!-- Nav Tabs -->
+    <ul class="nav nav-tabs" id="empleadoTab" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="asistencia-tab" data-bs-toggle="tab" data-bs-target="#asistencia" type="button" role="tab" aria-controls="asistencia" aria-selected="true">Asistencia</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="horasAcumuladas-tab" data-bs-toggle="tab" data-bs-target="#horasAcumuladas" type="button" role="tab" aria-controls="horasAcumuladas" aria-selected="false">Horas Acumuladas</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="solicitar-tab" data-bs-toggle="tab" data-bs-target="#solicitar" type="button" role="tab" aria-controls="solicitar" aria-selected="false">Solicitar Descanso</button>
+      </li>
+      <!-- Nueva pestaña "Total de horas" -->
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="totalHoras-tab" data-bs-toggle="tab" data-bs-target="#totalHoras" type="button" role="tab" aria-controls="totalHoras" aria-selected="false">Total de horas</button>
+      </li>
+    </ul>
+
+    <div class="tab-content" id="empleadoTabContent">
+      <!-- Asistencia Tab -->
+      <div class="tab-pane fade show active" id="asistencia" role="tabpanel" aria-labelledby="asistencia-tab">
+        <div class="mt-3 text-center">
+          <button class="btn btn-success me-2" onclick="registrarEntrada()">Registrar Entrada</button>
+          <button class="btn btn-primary" onclick="registrarSalida()">Registrar Salida</button>
+        </div>
+      </div>
+
+      <!-- Horas Acumuladas Tab (solo horas extra) -->
+      <div class="tab-pane fade" id="horasAcumuladas" role="tabpanel" aria-labelledby="horasAcumuladas-tab">
+        <div class="mt-3 text-center">
+          <button class="btn btn-info" onclick="consultarHoras()">Consultar Horas Acumuladas</button>
+          <div id="resultadoHoras" class="mt-3"></div>
+        </div>
+      </div>
+
+      <!-- Solicitar Descanso Tab -->
+      <div class="tab-pane fade" id="solicitar" role="tabpanel" aria-labelledby="solicitar-tab">
+        <div class="mt-3">
+          <form id="formSolicitud">
+            <div class="mb-3">
+              <label class="form-label">Horas a solicitar como descanso:</label>
+              <input type="number" step="0.1" class="form-control" id="horasSolicitud" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Día deseado para el descanso:</label>
+              <input type="date" class="form-control" id="diaDescanso" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Motivo:</label>
+              <textarea class="form-control" id="motivoDescanso" rows="2" placeholder="Ingrese el motivo"></textarea>
+            </div>
+            <button type="submit" class="btn btn-warning w-100">Solicitar Descanso</button>
+          </form>
+          <!-- Bandeja de mensajes para mostrar notas de rechazo -->
+          <div id="bandejaMensajes" class="mt-3">
+            <h5>Mensajes de Rechazo</h5>
+            <div id="listaMensajes"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Total de horas Tab -->
+      <div class="tab-pane fade" id="totalHoras" role="tabpanel" aria-labelledby="totalHoras-tab">
+        <div class="mt-3 text-center">
+          <button class="btn btn-info" onclick="consultarTotalHoras()">Consultar Total Semanal</button>
+          <div id="resultadoTotalHoras" class="mt-3"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap Bundle con Popper -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Aquí usamos la variable inyectada por el servidor mediante la plantilla -->
+  <script>
+    // La variable 'usuario' se inyecta desde el servidor con la plantilla
+    var usuarioLogueado = "<?= usuario ?>";
+    document.getElementById("nombreUsuario").innerText = usuarioLogueado;
+    
+    // Función para registrar entrada
+    function registrarEntrada() {
+      google.script.run.withSuccessHandler(function(response) {
+        Swal.fire(response.success ? "Éxito" : "Error", response.message, response.success ? "success" : "error");
+      }).registrarEntradaEmpleado(usuarioLogueado);
+    }
+    
+    // Función para registrar salida
+    function registrarSalida() {
+      google.script.run.withSuccessHandler(function(response) {
+        Swal.fire(response.success ? "Éxito" : "Error", response.message, response.success ? "success" : "error");
+      }).registrarSalidaEmpleado(usuarioLogueado);
+    }
+
+    // Función para convertir un valor decimal a horas y minutos
+    function convertirDecimalAHorasMinutos(decimalHoras) {
+      var horas = Math.floor(decimalHoras);
+      var minutos = Math.round((decimalHoras - horas) * 60);
+      return { horas: horas, minutos: minutos };
+    }
+
+    // Función para consultar horas acumuladas (solo extra)
+    function consultarHoras() {
+      google.script.run.withSuccessHandler(function(response) {
+        if(response.success) {
+          document.getElementById("resultadoHoras").innerHTML = "<h4>" + response.horas + " horas acumuladas</h4>";
+        } else {
+          document.getElementById("resultadoHoras").innerHTML = "<h4>" + response.message + "</h4>";
+        }
+      }).consultarHorasAcumuladas(usuarioLogueado);
+    }
+    
+    // Función para consultar el total de horas semanales (normales + extra)
+    function consultarTotalHoras() {
+      google.script.run.withSuccessHandler(function(response) {
+        if(response.success) {
+          var total = response.totalHoras;
+          var totalObj = convertirDecimalAHorasMinutos(total);
+          
+          var faltante = 44 - total;
+          var faltanteObj = convertirDecimalAHorasMinutos(Math.max(faltante, 0));
+          
+          var mensaje = "Total de horas trabajadas en la semana: " + 
+                        totalObj.horas + " horas y " + totalObj.minutos + " minutos. ";
+          if(total >= 44) {
+            mensaje += "¡Has cumplido o superado las 44 horas!";
+          } else {
+            mensaje += "Te faltan " + faltanteObj.horas + " horas y " + faltanteObj.minutos + " minutos para cumplir 44 horas.";
+          }
+          document.getElementById("resultadoTotalHoras").innerHTML = "<h4>" + mensaje + "</h4>";
+        } else {
+          document.getElementById("resultadoTotalHoras").innerHTML = "<h4>" + response.message + "</h4>";
+        }
+      }).consultarTotalHorasSemanal(usuarioLogueado);
+    }
+
+    // Evento para el formulario de solicitud de descanso con nuevos campos
+    document.getElementById("formSolicitud").addEventListener("submit", function(e) {
+      e.preventDefault();
+      var horasSolicitadas = document.getElementById("horasSolicitud").value;
+      var diaDescanso = document.getElementById("diaDescanso").value;
+      var motivoDescanso = document.getElementById("motivoDescanso").value;
+
+      google.script.run.withSuccessHandler(function(response) {
+        Swal.fire(response.success ? "Éxito" : "Error", response.message, response.success ? "success" : "error");
+        if(response.success) {
+          document.getElementById("formSolicitud").reset();
+          cargarMensajesRechazo(); // Recargar la bandeja de mensajes en caso de actualizaciones
+        }
+      }).solicitarDescanso(usuarioLogueado, horasSolicitadas, diaDescanso, motivoDescanso);
+    });
+
+    // Función para cargar mensajes de rechazo en la bandeja de mensajes
+    function cargarMensajesRechazo() {
+      google.script.run.withSuccessHandler(function(response) {
+        var listaMensajes = document.getElementById("listaMensajes");
+        listaMensajes.innerHTML = ""; // Limpiar antes de agregar nuevos
+
+        if (response.success && response.mensajes.length > 0) {
+          response.mensajes.forEach(function(mensaje) {
+            var div = document.createElement("div");
+            div.className = "alert alert-danger";
+            div.innerHTML = `<strong>${mensaje.fecha}:</strong> ${mensaje.texto}`;
+            listaMensajes.appendChild(div);
+          });
+        } else {
+          listaMensajes.innerHTML = "<p class='text-muted'>No hay mensajes de rechazo.</p>";
+        }
+      }).obtenerMensajesRechazo(usuarioLogueado);
+    }
+
+    // Cargar mensajes de rechazo al iniciar
+    cargarMensajesRechazo();
+  </script>
+</body>
+
+</html>
