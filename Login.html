@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Iniciar Sesión</title>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background-color: #f8f9fa;
+    }
+
+    .container {
+      max-width: 400px;
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="container">
+    <h3 class="text-center">Iniciar Sesión</h3>
+    <form id="loginForm">
+      <div class="mb-3">
+        <label class="form-label">Usuario</label>
+        <input type="text" class="form-control" id="usuario" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Contraseña</label>
+        <input type="password" class="form-control" id="contraseña" required>
+      </div>
+      <button type="submit" class="btn btn-primary w-100">Ingresar</button>
+    </form>
+  </div>
+
+  <script>
+    document.getElementById("loginForm").addEventListener("submit", function(event) {
+    event.preventDefault();
+    
+    let usuario = document.getElementById("usuario").value;
+    let contraseña = document.getElementById("contraseña").value;
+    
+    // Mostrar modal de carga inmediatamente con spinner
+    Swal.fire({
+      title: 'Cargando...',
+      text: 'Por favor espera',
+      allowOutsideClick: false,
+      didOpen: () => {
+        Swal.showLoading();
+      }
+    });
+    
+    // Llamada al servidor para validar el login
+    google.script.run.withSuccessHandler(function(response) {
+      if(response.success) {
+        // Se muestra el mensaje de bienvenida, y tras 300 ms se redirige inmediatamente
+        Swal.fire({
+          title: "Bienvenido",
+          text: response.message,
+          icon: "success",
+          showConfirmButton: false
+        });
+        
+        // Utilizamos un timer muy corto (300 ms) para cerrar el modal y redirigir
+        setTimeout(function() {
+          Swal.close();
+          window.location.href = response.redirect;
+        }, 300);
+      } else {
+        Swal.fire("Error", response.message, "error");
+      }
+    }).validarLogin(usuario, contraseña);
+  });
+  </script>
+
+
+
+</body>
+
+</html>
