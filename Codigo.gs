@@ -370,46 +370,66 @@ function obtenerReporteAsistenciaAdmin() {
 function obtenerResumenSemanalAdmin() {
   var hoja = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Asistencia");
   var datos = hoja.getDataRange().getValues();
-  var resumen = {}; // clave: usuario + "_" + semana
+  // Estructura: [0]ID, [1]Usuario, [2]Fecha, [3]Hora Entrada, [4]Hora Salida, [5]Horas Trabajadas
+
+  var resumen = {}; // clave: usuario + "_" + lunesDeEsaSemana
 
   for (var i = 1; i < datos.length; i++) {
     var usuario = datos[i][1];
+    if (!usuario) continue; // Evitar filas vacías
+
+    // Convertir la fecha
     var fechaRegistro = new Date(datos[i][2]);
-    // Obtener el día de la semana (0 = domingo, 1 = lunes, ..., 6 = sábado)
-    var day = fechaRegistro.getDay();
-    // Consideramos la semana iniciando el lunes: si es domingo (0), lo tratamos como 7.
-    if (day === 0) day = 7;
+    if (isNaN(fechaRegistro.getTime())) continue; // Si es inválida, salta
+
+    // Determinar el lunes de la semana (lunes a domingo)
+    var day = fechaRegistro.getDay(); // 0=domingo, 1=lunes, ... 6=sábado
+    if (day === 0) day = 7; // Tratar domingo como 7
     var monday = new Date(fechaRegistro);
     monday.setDate(fechaRegistro.getDate() - (day - 1));
     monday.setHours(0, 0, 0, 0);
+
+    // Crear la clave para agrupar: "usuario_YYYY-MM-DD"
     var key = usuario + "_" + Utilities.formatDate(monday, Session.getScriptTimeZone(), "yyyy-MM-dd");
 
+    // Inicializar el objeto si no existe
     if (!resumen[key]) {
       resumen[key] = {
         usuario: usuario,
+        // semana: fecha del lunes en formato YYYY-MM-DD
         semana: Utilities.formatDate(monday, Session.getScriptTimeZone(), "yyyy-MM-dd"),
-        totalHoras: 0
+        totalHoras: 0,
+        horasNormales: 0,
+        horasExtra: 0
       };
     }
 
+    // Horas trabajadas en ese día
     var horasTrabajadas = parseFloat(datos[i][5]) || 0;
+
+    // Calcular horas normales y extras para ese día
+    var dailyNorm = Math.min(8, horasTrabajadas);    // Máximo 8 horas normales al día
+    var dailyExtra = Math.max(0, horasTrabajadas - 8); // Lo que exceda de 8h es extra
+
+    // Sumar al acumulado semanal
     resumen[key].totalHoras += horasTrabajadas;
+    resumen[key].horasNormales += dailyNorm;
+    resumen[key].horasExtra += dailyExtra;
   }
 
-  // Convertir el objeto a arreglo y calcular horas estándar y extra
+  // Convertir el objeto 'resumen' en un arreglo
   var arrayResumen = [];
   for (var key in resumen) {
-    var total = Math.round(resumen[key].totalHoras * 100) / 100;
-    // Se considera que el máximo estándar es 44 hrs semanales
-    var horasNormales = (total > 44) ? 44 : total;
-    var horasExtra = (total > 44) ? total - 44 : 0;
-    resumen[key].horasNormales = horasNormales;
-    resumen[key].horasExtra = Math.round(horasExtra * 100) / 100;
+    // Redondear a 2 decimales
+    resumen[key].totalHoras = Math.round(resumen[key].totalHoras * 100) / 100;
+    resumen[key].horasNormales = Math.round(resumen[key].horasNormales * 100) / 100;
+    resumen[key].horasExtra = Math.round(resumen[key].horasExtra * 100) / 100;
     arrayResumen.push(resumen[key]);
   }
 
   return arrayResumen;
 }
+
 
 // Retorna un arreglo de objetos {id, nombre} para listar empleados en "Reporte Detallado".
 function obtenerListaEmpleados() {
@@ -486,11 +506,15 @@ function obtenerReporteEmpleado(empleadoId) {
   }
 
   // El resto de la función: agrupar por semana, etc. (se mantiene igual)
+  // Agrupar por semana (lunes a domingo) usando la fecha forzada a mediodía
   var grupos = {};
   registrosEmpleado.forEach(function (reg) {
-    var dateObj = new Date(reg.fecha.split(" ")[0]); // Toma la parte de la fecha
+    // Extrae la parte de la fecha (ejemplo: "2025-03-17") y fuerza la hora a mediodía para evitar desfases de zona horaria
+    var dateStr = reg.fecha.split(" ")[0]; // Toma la parte "yyyy-MM-dd"
+    var dateObj = new Date(dateStr + "T12:00:00"); // Forza la hora a mediodía
+
     var day = dateObj.getDay();
-    if (day === 0) day = 7;
+    if (day === 0) day = 7; // Tratar el domingo como 7
     var monday = new Date(dateObj);
     monday.setDate(dateObj.getDate() - (day - 1));
     monday.setHours(0, 0, 0, 0);
@@ -520,51 +544,67 @@ function obtenerReporteEmpleado(empleadoId) {
 
 function obtenerSolicitudesDescanso() {
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Solicitudes");
-  var datos = sheet.getDataRange().getValues();
-  var solicitudes = [];
+  if (!sheet) {
+    Logger.log("Error: No se encontró la hoja 'Solicitudes'");
+    return null;
+  }
 
-  // Asumiendo que la fila 1 es cabecera y la estructura es:
-  // Columna 1: ID, Columna 2: Usuario, Columna 3: Fecha, Columna 4: Horas Solicitadas, Columna 5: Estado
+  var datos = sheet.getDataRange().getValues();
+  Logger.log("Datos obtenidos: " + JSON.stringify(datos));
+
+  var solicitudes = [];
   for (var i = 1; i < datos.length; i++) {
-    if (datos[i][4] === "Pendiente") {  // Solo solicitudes pendientes
+    Logger.log("Fila " + i + ": " + JSON.stringify(datos[i]));
+
+    if (datos[i][6] && datos[i][6].trim().toLowerCase() === "pendiente") {
       solicitudes.push({
         id: datos[i][0],
         empleado: datos[i][1],
-        horas: parseFloat(datos[i][3]) || 0
+        fechaSolicitud: datos[i][2],
+        diaDescanso: datos[i][3],
+        horas: parseFloat(datos[i][4]) || 0,
+        motivo: datos[i][5]
       });
     }
   }
-  return solicitudes;
+
+  Logger.log("Solicitudes pendientes encontradas: " + JSON.stringify(solicitudes));
+  return solicitudes.length > 0 ? solicitudes : null;
 }
+
+
 
 function aprobarSolicitud(id, horasSolicitadas, empleado) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheetSolicitudes = ss.getSheetByName("Solicitudes");
   var datos = sheetSolicitudes.getDataRange().getValues();
-  // Buscar la solicitud y actualizar su estado a "Aprobada"
+
   for (var i = 1; i < datos.length; i++) {
     if (datos[i][0].toString() === id.toString()) {
-      sheetSolicitudes.getRange(i + 1, 5).setValue("Aprobada");
-      // Descontar las horas del empleado en la hoja "Usuarios" (lógica adicional)
-      // ...
+      sheetSolicitudes.getRange(i + 1, 7).setValue("Aprobada"); // Columna 7 (Estado)
+      // Aquí deberías descontar las horas en la hoja de Usuarios
       return { success: true, message: "Solicitud aprobada y horas descontadas." };
     }
   }
   return { success: false, message: "Solicitud no encontrada." };
 }
 
-function rechazarSolicitud(id, empleado) {
+
+function rechazarSolicitud(id, empleado, notaRechazo) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheetSolicitudes = ss.getSheetByName("Solicitudes");
   var datos = sheetSolicitudes.getDataRange().getValues();
+
   for (var i = 1; i < datos.length; i++) {
     if (datos[i][0].toString() === id.toString()) {
-      sheetSolicitudes.getRange(i + 1, 5).setValue("Rechazada");
-      return { success: true, message: "Solicitud rechazada." };
+      sheetSolicitudes.getRange(i + 1, 7).setValue("Rechazada"); // Columna 7 (Estado)
+      sheetSolicitudes.getRange(i + 1, 8).setValue(notaRechazo);  // Columna 8 (Nota Rechazo)
+      return { success: true, message: "Solicitud rechazada y se ha enviado la nota." };
     }
   }
   return { success: false, message: "Solicitud no encontrada." };
 }
+
 
 function rechazarSolicitud(id, empleado, notaRechazo) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
