@@ -543,19 +543,14 @@ function obtenerReporteEmpleado(empleadoId) {
 }
 
 function obtenerSolicitudesDescanso() {
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Solicitudes");
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Solicitudes"); // Nombre correcto
   if (!sheet) {
     Logger.log("Error: No se encontró la hoja 'Solicitudes'");
-    return null;
+    return []; // Retorna array vacío en lugar de null
   }
-
   var datos = sheet.getDataRange().getValues();
-  Logger.log("Datos obtenidos: " + JSON.stringify(datos));
-
   var solicitudes = [];
   for (var i = 1; i < datos.length; i++) {
-    Logger.log("Fila " + i + ": " + JSON.stringify(datos[i]));
-
     if (datos[i][6] && datos[i][6].trim().toLowerCase() === "pendiente") {
       solicitudes.push({
         id: datos[i][0],
@@ -567,12 +562,7 @@ function obtenerSolicitudesDescanso() {
       });
     }
   }
-
-  Logger.log("Solicitudes pendientes encontradas: " + JSON.stringify(solicitudes));
-  return solicitudes.length > 0 ? solicitudes : null;
 }
-
-
 
 function aprobarSolicitud(id, horasSolicitadas, empleado) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
