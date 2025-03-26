@@ -391,16 +391,18 @@
         if (solicitudes && solicitudes.length > 0) {
           html += '<ul class="list-group">';
           solicitudes.forEach(solicitud => {
-            html += `<li class="list-group-item d-flex justify-content-between align-items-center">
-                       <div>
-                         <strong>${solicitud.empleado}</strong><br>
-                         <small>Horas Solicitadas: ${convertirDecimalAHorasMinutos(solicitud.horas)}</small>
-                       </div>
-                       <div>
-                         <button class="btn btn-sm btn-success me-1" onclick="aprobarSolicitud('${solicitud.id}', ${solicitud.horas}, '${solicitud.empleado}')">Aprobar</button>
-                         <button class="btn btn-sm btn-danger" onclick="rechazarSolicitud('${solicitud.id}', '${solicitud.empleado}')">Rechazar</button>
-                       </div>
-                     </li>`;
+            html += `
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                <div>
+                  <strong>${solicitud.empleado}</strong><br>
+                  <small>Horas Solicitadas: ${solicitud.horas}</small>
+                </div>
+                <div>
+                  <button class="btn btn-sm btn-success me-1" onclick="aprobarSolicitud('${solicitud.id}', ${solicitud.horas}, '${solicitud.empleado}')">Aprobar</button>
+                  <button class="btn btn-sm btn-danger" onclick="rechazarSolicitud('${solicitud.id}', '${solicitud.empleado}')">Rechazar</button>
+                </div>
+              </li>
+            `;
           });
           html += '</ul>';
         } else {
@@ -462,7 +464,10 @@ function rechazarSolicitud(id, empleado) {
 }
 
   </script>
+
 </body>
+
 </html>
 </body>
+
 </html>
