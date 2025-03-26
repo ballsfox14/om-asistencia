@@ -124,14 +124,15 @@
     function convertirDecimalAHorasMinutos(decimalHoras) {
       var horas = Math.floor(decimalHoras);
       var minutos = Math.round((decimalHoras - horas) * 60);
-      return { horas: horas, minutos: minutos };
+      return horas + "h " + minutos + "m";
     }
 
     // Función para consultar horas acumuladas (solo extra)
-    function consultarHoras() {
+   function consultarHoras() {
       google.script.run.withSuccessHandler(function(response) {
         if(response.success) {
-          document.getElementById("resultadoHoras").innerHTML = "<h4>" + response.horas + " horas acumuladas</h4>";
+          var horasTexto = convertirDecimalAHorasMinutos(response.horas);
+          document.getElementById("resultadoHoras").innerHTML = "<h4>" + horasTexto + " acumuladas</h4>";
         } else {
           document.getElementById("resultadoHoras").innerHTML = "<h4>" + response.message + "</h4>";
         }
@@ -139,28 +140,27 @@
     }
     
     // Función para consultar el total de horas semanales (normales + extra)
-    function consultarTotalHoras() {
-      google.script.run.withSuccessHandler(function(response) {
-        if(response.success) {
-          var total = response.totalHoras;
-          var totalObj = convertirDecimalAHorasMinutos(total);
-          
-          var faltante = 44 - total;
-          var faltanteObj = convertirDecimalAHorasMinutos(Math.max(faltante, 0));
-          
-          var mensaje = "Total de horas trabajadas en la semana: " + 
-                        totalObj.horas + " horas y " + totalObj.minutos + " minutos. ";
-          if(total >= 44) {
-            mensaje += "¡Has cumplido o superado las 44 horas!";
-          } else {
-            mensaje += "Te faltan " + faltanteObj.horas + " horas y " + faltanteObj.minutos + " minutos para cumplir 44 horas.";
-          }
-          document.getElementById("resultadoTotalHoras").innerHTML = "<h4>" + mensaje + "</h4>";
+  function consultarTotalHoras() {
+    google.script.run.withSuccessHandler(function(response) {
+      if(response.success) {
+        var total = response.totalHoras;
+        var totalTexto = convertirDecimalAHorasMinutos(total);
+        
+        var faltante = 44 - total;
+        var faltanteTexto = convertirDecimalAHorasMinutos(Math.max(faltante, 0));
+        
+        var mensaje = "Total de horas trabajadas en la semana: " + totalTexto + ". ";
+        if(total >= 44) {
+          mensaje += "¡Has cumplido o superado las 44 horas!";
         } else {
-          document.getElementById("resultadoTotalHoras").innerHTML = "<h4>" + response.message + "</h4>";
+          mensaje += "Te faltan " + faltanteTexto + " para cumplir 44 horas.";
         }
-      }).consultarTotalHorasSemanal(usuarioLogueado);
-    }
+        document.getElementById("resultadoTotalHoras").innerHTML = "<h4>" + mensaje + "</h4>";
+      } else {
+        document.getElementById("resultadoTotalHoras").innerHTML = "<h4>" + response.message + "</h4>";
+      }
+    }).consultarTotalHorasSemanal(usuarioLogueado);
+  }
 
     // Evento para el formulario de solicitud de descanso con nuevos campos
     document.getElementById("formSolicitud").addEventListener("submit", function(e) {
